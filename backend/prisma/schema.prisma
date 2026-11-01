@@ -1,0 +1,19 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Baseline system health record model to verify DB connectivity and schema migrations
+model SystemHealth {
+  id        String   @id @default(uuid())
+  status    String   @default("healthy")
+  checkedAt DateTime @default(now())
+  metadata  Json?
+
+  @@map("system_health")
+}
+
