@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: walleta-api
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    healthCheckPath: /api/health
+    envVars:
+      - key: FRONTEND_URL
+        value: https://walleta-finance.vercel.app
+      - key: NODE_VERSION
+        value: 20

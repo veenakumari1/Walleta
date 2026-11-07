@@ -10,25 +10,44 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   const configService = app.get(ConfigService);
-  const port = Number(process.env.PORT ?? configService.get<number>('app.port', 3000));
+  const port = process.env.PORT ?? 3000;
   const apiPrefix = configService.get<string>('app.apiPrefix', 'api');
-  const frontendUrl = configService.get<string>('app.frontendUrl', 'http://localhost:5173');
 
   // Set global route prefix
   app.setGlobalPrefix(apiPrefix);
 
-  // Robust CORS configuration supporting localhost, 127.0.0.1, IPv6, and configured frontend URL
+  // Default allowed origins
+  const defaultOrigins = [
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'https://walleta-finance.vercel.app',
+  ];
+
+  // Comma-separated frontend URLs from env variable
+  const envOrigins = (process.env.FRONTEND_URL ?? '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter((origin) => origin.length > 0);
+
+  const allowedOrigins = Array.from(new Set([...defaultOrigins, ...envOrigins]));
+
+  // Robust CORS configuration supporting default origins, configured FRONTEND_URL, and curl/health-checks
   app.enableCors({
-   origin: (requestOrigin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-      if (
-        !requestOrigin ||
-        /^http:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(requestOrigin) ||
-        requestOrigin === frontendUrl
-      ) {
-        callback(null, true);
-      } else {
-        callback(null, true);
+    origin: (
+      requestOrigin: string | undefined,
+      callback: (err: Error | null, allow?: boolean) => void,
+    ) => {
+      // Allow requests with no origin (e.g. mobile apps, curl, health checks)
+      if (!requestOrigin) {
+        return callback(null, true);
       }
+
+      const isLocalhost = /^http:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(requestOrigin);
+      if (allowedOrigins.includes(requestOrigin) || isLocalhost) {
+        return callback(null, true);
+      }
+
+      return callback(new Error(`Origin ${requestOrigin} not allowed by CORS`));
     },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     credentials: true,
@@ -39,8 +58,8 @@ async function bootstrap() {
   app.useGlobalFilters(new AllExceptionsFilter());
   app.useGlobalInterceptors(new LoggingInterceptor());
 
-  // Listen on 0.0.0.0 so both IPv4 (127.0.0.1) and IPv6 (::1) localhost resolve seamlessly
-  await app.listen(port, '0.0.0.0');
+  // Listen on 0.0.0.0
+  await app.listen(process.env.PORT ?? 3000, '0.0.0.0');
   logger.log(`Autonomous Business Finance Backend is running on: http://localhost:${port}/${apiPrefix}`);
   logger.log(`Health Check available at: http://localhost:${port}/${apiPrefix}/health`);
 }
