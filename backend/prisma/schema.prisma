@@ -17,3 +17,130 @@ model SystemHealth {
   @@map("system_health")
 }
 
+/// Business Financial Account (Checking, Savings, Treasury, Credit)
+model Account {
+  id          String   @id @default(uuid())
+  name        String
+  type        String   // CHECKING, SAVINGS, CREDIT, TREASURY
+  accountNumber String
+  balance     Float
+  currency    String   @default("USD")
+  isSimulated Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  transactions Transaction[]
+
+  @@map("accounts")
+}
+
+/// Business Financial Transaction (Inflow/Outflow)
+model Transaction {
+  id            String   @id @default(uuid())
+  accountId     String?
+  date          DateTime
+  description   String
+  amount        Float
+  type          String   // INCOME, EXPENSE
+  category      String   // Revenue, Payroll, Software, Infrastructure, Marketing, Legal, Office, etc.
+  vendor        String?
+  paymentMethod String   @default("ACH") // ACH, WIRE, CARD, TRANSFER
+  status        String   @default("CLEARED") // PENDING, CLEARED, RECONCILED
+  isAnomalous   Boolean  @default(false)
+  anomalyReason String?
+  isSimulated   Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  account Account? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+
+  @@map("transactions")
+}
+
+/// Departmental and Operational Budgets
+model Budget {
+  id              String   @id @default(uuid())
+  department      String   // Engineering, Marketing, Operations, Sales, G&A
+  allocatedAmount Float
+  spentAmount     Float    @default(0)
+  period          String   @default("Q4-2026")
+  startDate       DateTime
+  endDate         DateTime
+  alertThreshold  Float    @default(0.85) // Alert at 85% consumption
+  status          String   @default("ON_TRACK") // ON_TRACK, AT_RISK, OVER_BUDGET
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("budgets")
+}
+
+/// Invoices - Accounts Payable & Accounts Receivable
+model Invoice {
+  id            String   @id @default(uuid())
+  invoiceNumber String   @unique
+  type          String   // PAYABLE (outgoing), RECEIVABLE (incoming)
+  entityName    String   // Client or Vendor name
+  amount        Float
+  issueDate     DateTime
+  dueDate       DateTime
+  status        String   @default("PENDING") // PENDING, PAID, OVERDUE, AWAITING_APPROVAL
+  requiresApproval Boolean @default(false)
+  isSimulated   Boolean  @default(true)
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("invoices")
+}
+
+/// Periodic Financial Summaries & Statements
+model FinancialReport {
+  id            String   @id @default(uuid())
+  title         String
+  period        String   // Monthly, Quarterly, Annual
+  generatedAt   DateTime @default(now())
+  revenue       Float
+  expenses      Float
+  netIncome     Float
+  grossMargin   Float
+  runwayMonths  Float
+  summary       String
+  kpiData       Json?
+  agentNotes    String?
+
+  @@map("financial_reports")
+}
+
+/// Multi-Agent Execution Audit Logs (Week 7 Governance & Observability)
+model AgentActionAudit {
+  id                  String   @id @default(uuid())
+  agentName           String   // FinancialAnalyst, ExpenseManager, CashFlowManager, etc.
+  actionType          String   // ANALYZE, CATEGORIZE, FORECAST, BUDGET_CHECK, REPORT, ASSIST
+  timestamp           DateTime @default(now())
+  executionDurationMs Int
+  status              String   // SUCCESS, FAILED, INTERCEPTED, AWAITING_APPROVAL
+  inputPayload        Json?
+  outputPayload       Json?
+  isSandboxed         Boolean  @default(true)
+  hooksTriggered      String[] // PreExecutionValidation, BalanceIntegrity, etc.
+  requiresApproval    Boolean  @default(false)
+  approvalStatus      String?  // PENDING, APPROVED, REJECTED
+
+  @@map("agent_action_audits")
+}
+
+/// Human-In-The-Loop Security Approval Requests
+model ApprovalRequest {
+  id                String   @id @default(uuid())
+  title             String
+  description       String
+  actionType        String   // LARGE_PAYMENT, BUDGET_REALLOCATION, POLICY_OVERRIDE
+  amount            Float?
+  requestedByAgent  String
+  status            String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  reviewedBy        String?
+  reviewedAt        DateTime?
+  metadata          Json?
+  createdAt         DateTime @default(now())
+
+  @@map("approval_requests")
+}

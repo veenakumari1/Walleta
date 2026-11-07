@@ -1,7 +1,6 @@
 import type { ApiError } from '../types/health.types';
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api';
 
 export class ApiClientError extends Error {
   statusCode?: number;
@@ -15,10 +14,7 @@ export class ApiClientError extends Error {
   }
 }
 
-export async function fetchApi<T>(
-  endpoint: string,
-  options: RequestInit = {},
-): Promise<T> {
+export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE_URL.replace(/\/$/, '')}/${endpoint.replace(/^\//, '')}`;
 
   const defaultHeaders: Record<string, string> = {
@@ -44,8 +40,7 @@ export async function fetchApi<T>(
       }
 
       const message =
-        errorBody?.message ??
-        `HTTP ${response.status}: ${response.statusText || 'Request failed'}`;
+        errorBody?.message ?? `HTTP ${response.status}: ${response.statusText || 'Request failed'}`;
 
       throw new ApiClientError(
         Array.isArray(message) ? message.join(', ') : message,

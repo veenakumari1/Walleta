@@ -49,8 +49,8 @@ export const HealthCard: React.FC<HealthCardProps> = ({
               isHealthy
                 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                 : isDegraded
-                ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                  ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                  : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
             }`}
           >
             {isHealthy ? (
@@ -64,7 +64,8 @@ export const HealthCard: React.FC<HealthCardProps> = ({
           <div>
             <h2 className="text-base font-semibold text-white">System Health & API Telemetry</h2>
             <p className="text-xs text-slate-400">
-              Live status ping from NestJS REST API endpoint (<code className="text-cyan-400">GET /api/health</code>)
+              Live status ping from NestJS REST API endpoint (
+              <code className="text-cyan-400">GET /api/health</code>)
             </p>
           </div>
         </div>
@@ -150,15 +151,11 @@ export const HealthCard: React.FC<HealthCardProps> = ({
           <div className="mt-2 flex items-center gap-1.5">
             <span
               className={`h-2 w-2 rounded-full ${
-                health?.database.status === 'connected'
-                  ? 'bg-emerald-400'
-                  : 'bg-amber-400'
+                health?.database.status === 'connected' ? 'bg-emerald-400' : 'bg-amber-400'
               }`}
             />
             <span className="text-xs text-slate-400">
-              {health?.database.status === 'connected'
-                ? 'Healthy'
-                : 'Ready for DB instance'}
+              {health?.database.status === 'connected' ? 'Healthy' : 'Ready for DB instance'}
             </span>
           </div>
         </div>
