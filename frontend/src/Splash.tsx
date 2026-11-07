@@ -10,7 +10,7 @@ interface SplashProps {
 
 type Phase = 'checking' | 'gate' | 'playing';
 
-const Splash: React.FC<SplashProps> = ({ onDone, duration = 4200 }) => {
+const Splash: React.FC<SplashProps> = ({ onDone, duration = 2800 }) => {
   const uid = useId().replace(/:/g, '');
   const bg = `bg-${uid}`;
   const st = `st-${uid}`;

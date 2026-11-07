@@ -24,10 +24,10 @@ function tone(ctx: AudioContext, out: AudioNode, o: ToneOpts) {
 }
 
 /**
- * Plays the welcome sequence.
+ * Plays the welcome sequence (~2.7s, synced with Splash).
  * onRunning: audio is allowed and the sequence started.
  * onBlocked: browser blocked autoplay (needs a click first).
- * Returns a cleanup function.
+ * Returns a cleanup function (fades out, then closes).
  */
 export function playWelcomeSound(
   name = 'Walleta',
@@ -50,18 +50,17 @@ export function playWelcomeSound(
   const run = () => {
     if (started || cancelled) return;
     started = true;
-    console.log('[Walleta] sound started, ctx state:', ctx.state);
     onRunning?.();
 
-    tone(ctx, master, { freq: 180, slideTo: 720, start: 0, dur: 0.6, gain: 0.12 });
-    tone(ctx, master, { freq: 420, slideTo: 1400, start: 0.7, dur: 1.1, type: 'triangle', gain: 0.04 });
+    tone(ctx, master, { freq: 180, slideTo: 720, start: 0, dur: 0.45, gain: 0.12 });
+    tone(ctx, master, { freq: 420, slideTo: 1400, start: 0.4, dur: 0.8, type: 'triangle', gain: 0.04 });
     name.split('').forEach((_, i) =>
-      tone(ctx, master, { freq: 880 + i * 70, start: 1.5 + i * 0.07, dur: 0.09, gain: 0.03 }),
+      tone(ctx, master, { freq: 880 + i * 70, start: 1.0 + i * 0.05, dur: 0.08, gain: 0.03 }),
     );
-    tone(ctx, master, { freq: 1318.5, start: 1.7, dur: 0.7, gain: 0.08 });
-    tone(ctx, master, { freq: 1760, start: 1.72, dur: 0.9, gain: 0.05 });
+    tone(ctx, master, { freq: 1318.5, start: 1.15, dur: 0.6, gain: 0.08 });
+    tone(ctx, master, { freq: 1760, start: 1.17, dur: 0.8, gain: 0.05 });
     [523.25, 659.25, 783.99].forEach((f, i) =>
-      tone(ctx, master, { freq: f, start: 2.7 + i * 0.04, dur: 1.3, gain: 0.05 }),
+      tone(ctx, master, { freq: f, start: 1.7 + i * 0.04, dur: 0.95, gain: 0.05 }),
     );
   };
 
@@ -74,7 +73,6 @@ export function playWelcomeSound(
       if (ctx.state === 'running') {
         run();
       } else {
-        console.log('[Walleta] autoplay blocked, showing Enter button');
         onBlocked?.();
       }
     }, 200);
@@ -82,7 +80,16 @@ export function playWelcomeSound(
 
   return () => {
     cancelled = true;
-    master.disconnect();
-    ctx.close().catch(() => {});
+    try {
+      master.gain.cancelScheduledValues(ctx.currentTime);
+      master.gain.setValueAtTime(master.gain.value, ctx.currentTime);
+      master.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.15);
+    } catch {
+      /* ignore */
+    }
+    setTimeout(() => {
+      master.disconnect();
+      ctx.close().catch(() => {});
+    }, 200);
   };
 }
