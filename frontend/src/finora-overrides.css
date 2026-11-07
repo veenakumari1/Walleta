@@ -1,0 +1,56 @@
+/* Bridge layer: purane Tailwind cyan/slate views ko Finora orange-glass theme mein convert karta hai.
+   Sirf .finora ke andar apply hota hai. Import order: finora-theme.css ke BAAD. */
+
+/* ---- Extra header / tab bits ---- */
+.tabs-wrap { max-width: 1280px; margin: 0 auto; padding: 18px 32px 0; }
+.status-pill {
+  display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px;
+  font-size: 13px; font-weight: 700; background: var(--surface); border: 1px solid var(--border);
+}
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); box-shadow: 0 0 10px var(--red); }
+.status-pill.online .status-dot { background: var(--green); box-shadow: 0 0 10px var(--green); animation: pulse 2s infinite; }
+.status-pill.loading .status-dot { background: #ffb347; box-shadow: 0 0 10px #ffb347; animation: pulse 1s infinite; }
+@keyframes pulse { 50% { opacity: 0.35; } }
+.tab-badge {
+  font-style: normal; font-size: 11px; font-weight: 800; margin-left: 8px; padding: 1px 7px;
+  border-radius: 999px; background: var(--accent-soft); color: #ffb98a;
+}
+.tab.active .tab-badge { background: rgba(255, 255, 255, 0.25); color: #fff; }
+.finora-footer { text-align: center; color: var(--muted); font-size: 12px; padding: 28px 16px 36px; }
+
+/* ---- Surfaces: slate -> glass ---- */
+.finora [class*="bg-slate-900"],
+.finora [class*="bg-slate-800"],
+.finora [class*="bg-gray-900"],
+.finora [class*="bg-gray-800"],
+.finora [class*="bg-zinc-900"] {
+  background: linear-gradient(160deg, var(--surface), rgba(255, 255, 255, 0.015)) !important;
+  backdrop-filter: blur(18px);
+}
+.finora [class*="bg-slate-950"] { background: rgba(0, 0, 0, 0.28) !important; }
+.finora [class*="border-slate-"],
+.finora [class*="border-gray-"],
+.finora [class*="divide-slate-"] > * { border-color: var(--border) !important; }
+.finora [class*="rounded-xl"], .finora [class*="rounded-2xl"] { border-radius: var(--radius); }
+
+/* ---- Accent: cyan -> orange ---- */
+.finora [class*="text-cyan-"] { color: var(--accent) !important; }
+.finora [class*="border-cyan-"] { border-color: rgba(242, 106, 33, 0.35) !important; }
+.finora [class*="bg-cyan-"] { background: var(--accent-soft) !important; }
+.finora [class~="bg-cyan-500"], .finora [class~="bg-cyan-600"], .finora [class~="bg-cyan-400"] {
+  background: linear-gradient(135deg, #ff8a3d, var(--accent)) !important; color: #fff !important;
+}
+.finora [class*="ring-cyan-"] { --tw-ring-color: rgba(242, 106, 33, 0.4) !important; }
+.finora ::selection { background: var(--accent-soft); color: #ffd7bd; }
+
+/* ---- Inputs ---- */
+.finora input, .finora select, .finora textarea {
+  background: rgba(255, 255, 255, 0.04) !important; border: 1px solid var(--border) !important;
+  border-radius: 12px; color: var(--text); transition: border-color 0.25s, box-shadow 0.25s;
+}
+.finora input:focus, .finora select:focus, .finora textarea:focus {
+  outline: none; border-color: rgba(242, 106, 33, 0.6) !important; box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* ---- Smooth hover on everything clickable ---- */
+.finora button { transition: transform 0.25s var(--ease), background 0.25s var(--ease), box-shadow 0.25s var(--ease); }

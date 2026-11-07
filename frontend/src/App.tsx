@@ -1,6 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Header } from './components/Header';
-import { NavigationTabs, type TabId } from './components/NavigationTabs';
+import { AnimatePresence } from 'framer-motion';
+import Splash, { APP_NAME } from './Splash';
+import { AnimatedTabs, TabContent } from './AnimatedTabs';
+import type { TabId } from './components/NavigationTabs';
+import { WalletaLogo } from './components/WalletaLogo';
 import { OverviewView } from './components/OverviewView';
 import { TransactionsView } from './components/TransactionsView';
 import { CashFlowView } from './components/CashFlowView';
@@ -49,6 +52,7 @@ import type {
 const CURRENT_YEAR = new Date().getFullYear();
 
 export const App: React.FC = () => {
+  const [showSplash, setShowSplash] = useState(true);
   const [activeTab, setActiveTab] = useState<TabId>('overview');
 
   // Backend Health Telemetry
@@ -250,24 +254,22 @@ export const App: React.FC = () => {
   const pendingApprovalsCount = approvals.filter((a) => a.status === 'PENDING').length;
   const anomaliesCount = transactions.filter((t) => t.isAnomalous).length;
 
-  return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-cyan-500/30 selection:text-cyan-200">
-      <Header
-        isBackendConnected={Boolean(health)}
-        isLoading={isHealthLoading}
-        liquidCash={metrics?.totalCashBalance}
-        activeAgentsCount={agents.length || 6}
-      />
+  const tabs: { id: TabId; label: string; badge?: number }[] = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'transactions', label: 'Transactions', badge: anomaliesCount || undefined },
+    { id: 'cash-flow', label: 'Cash Flow' },
+    { id: 'budgets', label: 'Budgets' },
+    { id: 'invoices', label: 'Invoices' },
+    { id: 'agents', label: 'Agents' },
+    { id: 'approvals', label: 'Approvals', badge: pendingApprovalsCount || undefined },
+    { id: 'assistant', label: 'Assistant' },
+    { id: 'system-health', label: 'System' },
+  ];
 
-      <NavigationTabs
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        pendingApprovalsCount={pendingApprovalsCount}
-        anomaliesCount={anomaliesCount}
-      />
-
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {activeTab === 'overview' && (
+  const renderTab = () => {
+    switch (activeTab) {
+      case 'overview':
+        return (
           <OverviewView
             metrics={metrics}
             transactions={transactions}
@@ -276,30 +278,30 @@ export const App: React.FC = () => {
             onRunAudit={handleRunFullReview}
             isAuditRunning={isWorkflowRunning}
           />
-        )}
-
-        {activeTab === 'transactions' && (
+        );
+      case 'transactions':
+        return (
           <TransactionsView
             transactions={transactions}
             onAddTransaction={handleAddTransaction}
             isAdding={isAddingTx}
           />
-        )}
-
-        {activeTab === 'cash-flow' && <CashFlowView forecast={forecast} />}
-
-        {activeTab === 'budgets' && <BudgetsView budgets={budgets} />}
-
-        {activeTab === 'invoices' && (
+        );
+      case 'cash-flow':
+        return <CashFlowView forecast={forecast} />;
+      case 'budgets':
+        return <BudgetsView budgets={budgets} />;
+      case 'invoices':
+        return (
           <InvoicesView
             invoices={invoices}
             onPayInvoice={handlePayInvoice}
             onNavigateApprovals={() => setActiveTab('approvals')}
             isPaying={isPayingInvoice}
           />
-        )}
-
-        {activeTab === 'agents' && (
+        );
+      case 'agents':
+        return (
           <MultiAgentView
             agents={agents}
             auditLogs={auditLogs}
@@ -307,21 +309,19 @@ export const App: React.FC = () => {
             onRunFullReview={handleRunFullReview}
             isWorkflowRunning={isWorkflowRunning}
           />
-        )}
-
-        {activeTab === 'approvals' && (
+        );
+      case 'approvals':
+        return (
           <ApprovalsView
             approvals={approvals}
             onReview={handleReviewApproval}
             isReviewing={isReviewingApproval}
           />
-        )}
-
-        {activeTab === 'assistant' && (
-          <AssistantChatView onSendMessage={handleSendMessage} isSending={isSendingChat} />
-        )}
-
-        {activeTab === 'system-health' && (
+        );
+      case 'assistant':
+        return <AssistantChatView onSendMessage={handleSendMessage} isSending={isSendingChat} />;
+      case 'system-health':
+        return (
           <div className="space-y-8">
             <HealthCard
               health={health}
@@ -332,21 +332,45 @@ export const App: React.FC = () => {
             />
             <ArchitectureOverview />
           </div>
-        )}
-      </main>
+        );
+      default:
+        return null;
+    }
+  };
 
-      <footer className="border-t border-slate-900 bg-slate-950/80 py-6 text-center text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>
-            &copy; {CURRENT_YEAR} Autonomous Business Finance Platform &bull; Capstone Autonomous AI
-            Finance Department
-          </p>
-          <p className="font-mono text-slate-600">
-            6 AI Agents &bull; Sandboxed Execution &bull; Verification Hooks &bull; NestJS &bull;
-            React &bull; Prisma
-          </p>
-        </div>
-      </footer>
+  const statusClass = isHealthLoading ? 'loading' : health ? 'online' : '';
+  const statusText = isHealthLoading ? 'Connecting' : health ? 'Online' : 'Offline';
+
+  return (
+    <div className="finora min-h-screen flex flex-col">
+      <AnimatePresence>
+        {showSplash && <Splash onDone={() => setShowSplash(false)} />}
+      </AnimatePresence>
+
+      {!showSplash && (
+        <>
+          <header className="topbar">
+            <div className="brand">
+              <WalletaLogo size={34} />
+            </div>
+            <div className={`status-pill ${statusClass}`}>
+              <span className="status-dot" /> {statusText}
+            </div>
+          </header>
+
+          <div className="tabs-wrap">
+            <AnimatedTabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
+          </div>
+
+          <main className="page flex-1 w-full">
+            <TabContent tabKey={activeTab}>{renderTab()}</TabContent>
+          </main>
+
+          <footer className="finora-footer">
+            &copy; {CURRENT_YEAR} {APP_NAME} &bull; Autonomous AI Finance Department
+          </footer>
+        </>
+      )}
     </div>
   );
 };

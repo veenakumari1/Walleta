@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
-import { Search, Plus, AlertTriangle, CheckCircle2, X, Sparkles } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { AlertTriangle, ArrowDownLeft, ArrowUpRight, Plus, Search, X } from 'lucide-react';
 import type { TransactionModel } from '../types/finance.types';
+import { Item, Stagger } from '../AnimatedTabs';
 
 interface TransactionsViewProps {
   transactions: TransactionModel[];
@@ -15,6 +17,15 @@ interface TransactionsViewProps {
   isAdding: boolean;
 }
 
+const money = (n: number) => `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+const shortDate = (d: string) =>
+  new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+
+const INPUT =
+  'w-full px-4 py-3 text-sm text-white placeholder-white/30';
+const FIELD_LABEL = 'block text-[11px] uppercase tracking-wider text-white/50 font-semibold mb-1.5';
+const PAGE_SIZE = 10;
+
 export const TransactionsView: React.FC<TransactionsViewProps> = ({
   transactions,
   onAddTransaction,
@@ -24,6 +35,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
   const [typeFilter, setTypeFilter] = useState<'ALL' | 'INCOME' | 'EXPENSE'>('ALL');
   const [anomalousOnly, setAnomalousOnly] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [visible, setVisible] = useState(PAGE_SIZE);
 
   // Form states
   const [desc, setDesc] = useState('');
@@ -33,18 +45,23 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
   const [category, setCategory] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('ACH');
 
-  const filtered = transactions.filter((t) => {
-    if (typeFilter !== 'ALL' && t.type !== typeFilter) return false;
-    if (anomalousOnly && !t.isAnomalous) return false;
-    if (searchTerm) {
-      const match =
-        t.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        t.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (t.vendor && t.vendor.toLowerCase().includes(searchTerm.toLowerCase()));
-      if (!match) return false;
-    }
-    return true;
-  });
+  const filtered = useMemo(() => {
+    const q = searchTerm.toLowerCase();
+    return transactions
+      .filter((t) => {
+        if (typeFilter !== 'ALL' && t.type !== typeFilter) return false;
+        if (anomalousOnly && !t.isAnomalous) return false;
+        if (q) {
+          const match =
+            t.description.toLowerCase().includes(q) ||
+            t.category.toLowerCase().includes(q) ||
+            (t.vendor && t.vendor.toLowerCase().includes(q));
+          if (!match) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [transactions, typeFilter, anomalousOnly, searchTerm]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,288 +83,259 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
     setCategory('');
   };
 
+  const typeFilters = [
+    { id: 'ALL', label: 'All' },
+    { id: 'INCOME', label: 'Income' },
+    { id: 'EXPENSE', label: 'Expense' },
+  ] as const;
+
   return (
-    <div className="space-y-6">
-      {/* Header & Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-white">
-            Financial Transactions &amp; Audit Ledger
-          </h2>
-          <p className="text-xs text-slate-400">
-            Real-time categorized ledger with statistical Z-score anomaly detection
-          </p>
-        </div>
+    <Stagger className="space-y-5">
+      {/* Toolbar */}
+      <Item>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
+            <input
+              type="text"
+              placeholder="Search transactions"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className={`${INPUT} !pl-11`}
+              style={{ paddingLeft: 44 }}
+            />
+          </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold shadow-md shadow-cyan-600/20 transition cursor-pointer"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Record Transaction</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Filter Toolbar */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="relative w-full md:w-80">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search descriptions, vendors, categories..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-          />
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
-            {(['ALL', 'INCOME', 'EXPENSE'] as const).map((t) => (
+          <div className="inline-flex p-1 rounded-full bg-white/5 border border-white/10">
+            {typeFilters.map((f) => (
               <button
-                key={t}
-                onClick={() => setTypeFilter(t)}
-                className={`px-3 py-1 rounded-lg transition font-medium cursor-pointer ${
-                  typeFilter === t
-                    ? 'bg-slate-800 text-cyan-400 shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
+                key={f.id}
+                onClick={() => setTypeFilter(f.id)}
+                className={`px-4 py-1.5 rounded-full text-xs font-semibold cursor-pointer transition ${
+                  typeFilter === f.id ? 'bg-[var(--accent)] text-white' : 'text-white/60 hover:text-white'
                 }`}
               >
-                {t}
+                {f.label}
               </button>
             ))}
           </div>
 
           <button
             onClick={() => setAnomalousOnly(!anomalousOnly)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition cursor-pointer ${
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-full border text-xs font-semibold cursor-pointer transition ${
               anomalousOnly
-                ? 'bg-rose-500/20 text-rose-300 border-rose-500/50 shadow-sm shadow-rose-500/20'
-                : 'bg-slate-950 text-slate-400 border-slate-800 hover:border-slate-700'
+                ? 'bg-[var(--accent-soft)] text-[var(--accent-2)] border-[var(--accent)]'
+                : 'bg-white/5 text-white/60 border-white/10 hover:text-white'
             }`}
           >
-            <AlertTriangle className="h-3.5 w-3.5 text-rose-400" />
-            <span>Flagged Outliers Only</span>
+            <AlertTriangle className="h-3.5 w-3.5" />
+            Flagged
+          </button>
+
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="btn flex items-center gap-2"
+            style={{ padding: '10px 18px' }}
+          >
+            <Plus className="h-4 w-4" />
+            Add
           </button>
         </div>
-      </div>
+      </Item>
 
-      {/* Transactions Table */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/40 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="border-b border-slate-800 bg-slate-950/40 text-slate-400">
-                <th className="py-3 px-4 font-medium">Date</th>
-                <th className="py-3 px-4 font-medium">Description &amp; Anomaly Details</th>
-                <th className="py-3 px-4 font-medium">Vendor</th>
-                <th className="py-3 px-4 font-medium">Category</th>
-                <th className="py-3 px-4 font-medium">Method</th>
-                <th className="py-3 px-4 font-medium text-right">Amount</th>
-                <th className="py-3 px-4 font-medium text-right">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60">
-              {filtered.map((t) => (
-                <tr
-                  key={t.id}
-                  className={`hover:bg-slate-800/30 transition ${
-                    t.isAnomalous ? 'bg-rose-950/15' : ''
+      {/* List */}
+      <Item>
+        <div className="card">
+          <div className="space-y-2">
+            {filtered.slice(0, visible).map((t) => (
+              <div
+                key={t.id}
+                className="flex items-center gap-4 p-3 rounded-2xl bg-white/[0.04] hover:bg-white/[0.07] transition"
+              >
+                <div
+                  className={`h-10 w-10 rounded-xl grid place-items-center shrink-0 ${
+                    t.type === 'INCOME'
+                      ? 'bg-white/10 text-white'
+                      : 'bg-[var(--accent-soft)] text-[var(--accent)]'
                   }`}
                 >
-                  <td className="py-3.5 px-4 font-mono text-slate-400 whitespace-nowrap">
-                    {new Date(t.date).toLocaleDateString()}
-                  </td>
-                  <td className="py-3.5 px-4">
-                    <p className="font-semibold text-white">{t.description}</p>
-                    {t.isAnomalous && t.anomalyReason && (
-                      <div className="mt-1 flex items-start gap-1.5 text-[11px] text-rose-300 bg-rose-950/40 p-1.5 rounded-lg border border-rose-800/50">
-                        <AlertTriangle className="h-3.5 w-3.5 text-rose-400 shrink-0 mt-0.5" />
-                        <span>{t.anomalyReason}</span>
-                      </div>
-                    )}
-                  </td>
-                  <td className="py-3.5 px-4 text-slate-300">{t.vendor || '—'}</td>
-                  <td className="py-3.5 px-4">
-                    <span className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700/60 text-[11px]">
-                      {t.category}
-                    </span>
-                  </td>
-                  <td className="py-3.5 px-4 text-slate-400 font-mono">{t.paymentMethod}</td>
-                  <td
-                    className={`py-3.5 px-4 text-right font-mono font-bold ${
-                      t.type === 'INCOME' ? 'text-emerald-400' : 'text-slate-100'
-                    }`}
-                  >
-                    {t.type === 'INCOME' ? '+' : '-'}${t.amount.toLocaleString()}
-                  </td>
-                  <td className="py-3.5 px-4 text-right">
-                    <span className="inline-flex items-center gap-1 text-[11px] text-slate-400">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-                      {t.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-500">
-                    No transactions match the selected filters.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                  {t.type === 'INCOME' ? (
+                    <ArrowDownLeft className="h-5 w-5" />
+                  ) : (
+                    <ArrowUpRight className="h-5 w-5" />
+                  )}
+                </div>
 
-      {/* Record Transaction Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="w-full max-w-lg rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-cyan-400" />
-                <h3 className="text-base font-bold text-white">Record New Transaction</h3>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-sm truncate">{t.description}</p>
+                    {t.isAnomalous && (
+                      <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--accent-soft)] text-[var(--accent-2)]">
+                        Flagged
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-white/50 truncate">
+                    {t.category} &bull; {shortDate(t.date)}
+                    {t.vendor ? ` • ${t.vendor}` : ''}
+                  </p>
+                  {t.isAnomalous && t.anomalyReason && (
+                    <p className="text-[11px] text-[var(--accent-2)] mt-1 truncate">{t.anomalyReason}</p>
+                  )}
+                </div>
+
+                <p
+                  className={`font-bold text-sm whitespace-nowrap ${
+                    t.type === 'INCOME' ? 'text-white' : 'text-[var(--accent)]'
+                  }`}
+                >
+                  {t.type === 'INCOME' ? '+' : '-'}
+                  {money(t.amount)}
+                </p>
               </div>
+            ))}
+
+            {filtered.length === 0 && (
+              <p className="text-sm text-white/40 py-10 text-center">No transactions found</p>
+            )}
+          </div>
+
+          {filtered.length > visible && (
+            <div className="text-center mt-4">
               <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-200 cursor-pointer"
+                onClick={() => setVisible((v) => v + PAGE_SIZE)}
+                className="btn btn-ghost"
+                style={{ padding: '9px 20px', fontSize: 13 }}
               >
-                <X className="h-5 w-5" />
+                Show more ({filtered.length - visible})
               </button>
             </div>
-
-            <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-              <div className="flex rounded-xl bg-slate-950 p-1 border border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setTxType('EXPENSE')}
-                  className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                    txType === 'EXPENSE'
-                      ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
-                      : 'text-slate-400'
-                  }`}
-                >
-                  Expense / Outflow
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTxType('INCOME')}
-                  className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                    txType === 'INCOME'
-                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                      : 'text-slate-400'
-                  }`}
-                >
-                  Revenue / Inflow
-                </button>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">
-                  Description *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. AWS Production compute monthly invoice"
-                  value={desc}
-                  onChange={(e) => setDesc(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">
-                    Amount ($ USD) *
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    required
-                    placeholder="1500.00"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 font-mono"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">
-                    Vendor / Counterparty
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Amazon Web Services"
-                    value={vendor}
-                    onChange={(e) => setVendor(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">
-                    Category (Optional - Auto-inferred)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Leave blank for Auto-Categorize"
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">
-                    Payment Method
-                  </label>
-                  <select
-                    value={paymentMethod}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-cyan-500"
-                  >
-                    <option value="ACH">ACH Transfer</option>
-                    <option value="WIRE">Fedwire</option>
-                    <option value="CARD">Corporate Card</option>
-                    <option value="TRANSFER">Internal Transfer</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800/80 text-[11px] text-slate-400">
-                <span className="font-semibold text-cyan-400">Autonomous Processing Pipeline:</span>{' '}
-                Upon submission, the transaction will automatically run through the{' '}
-                <strong>Categorization Engine</strong> and the <strong>Anomaly Detector</strong>{' '}
-                (Z-score analysis &amp; duplicate check).
-              </div>
-
-              <div className="pt-2 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isAdding}
-                  className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold shadow-md shadow-cyan-600/20 transition cursor-pointer disabled:opacity-50"
-                >
-                  {isAdding ? 'Processing...' : 'Process & Record'}
-                </button>
-              </div>
-            </form>
-          </div>
+          )}
         </div>
-      )}
-    </div>
+      </Item>
+
+      {/* Add transaction modal (portal: page transition ke transform se bahar) */}
+      {isModalOpen &&
+        createPortal(
+          <div className="finora">
+            <div
+              className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+              style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(8px)' }}
+              onClick={() => setIsModalOpen(false)}
+            >
+              <div className="card w-full max-w-lg" onClick={(e) => e.stopPropagation()} style={{ transform: 'none' }}>
+                <div className="flex items-center justify-between mb-5">
+                  <h3 className="text-lg font-bold">New transaction</h3>
+                  <button
+                    onClick={() => setIsModalOpen(false)}
+                    className="text-white/50 hover:text-white cursor-pointer"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="inline-flex w-full p-1 rounded-full bg-white/5 border border-white/10">
+                    {(['EXPENSE', 'INCOME'] as const).map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setTxType(t)}
+                        className={`flex-1 py-2 rounded-full text-xs font-semibold cursor-pointer transition ${
+                          txType === t ? 'bg-[var(--accent)] text-white' : 'text-white/60'
+                        }`}
+                      >
+                        {t === 'EXPENSE' ? 'Expense' : 'Income'}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div>
+                    <label className={FIELD_LABEL}>Description</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Monthly server invoice"
+                      value={desc}
+                      onChange={(e) => setDesc(e.target.value)}
+                      className={INPUT}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className={FIELD_LABEL}>Amount ($)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        required
+                        placeholder="1500.00"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                        className={INPUT}
+                      />
+                    </div>
+                    <div>
+                      <label className={FIELD_LABEL}>Vendor</label>
+                      <input
+                        type="text"
+                        placeholder="Optional"
+                        value={vendor}
+                        onChange={(e) => setVendor(e.target.value)}
+                        className={INPUT}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className={FIELD_LABEL}>Category</label>
+                      <input
+                        type="text"
+                        placeholder="Auto if empty"
+                        value={category}
+                        onChange={(e) => setCategory(e.target.value)}
+                        className={INPUT}
+                      />
+                    </div>
+                    <div>
+                      <label className={FIELD_LABEL}>Method</label>
+                      <select
+                        value={paymentMethod}
+                        onChange={(e) => setPaymentMethod(e.target.value)}
+                        className={INPUT}
+                      >
+                        <option value="ACH">ACH Transfer</option>
+                        <option value="WIRE">Wire</option>
+                        <option value="CARD">Card</option>
+                        <option value="TRANSFER">Internal Transfer</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-white/40">
+                    Category and anomaly check run automatically after you save.
+                  </p>
+
+                  <div className="flex justify-end gap-3 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setIsModalOpen(false)}
+                      className="btn btn-ghost"
+                      style={{ padding: '10px 20px' }}
+                    >
+                      Cancel
+                    </button>
+                    <button type="submit" disabled={isAdding} className="btn" style={{ padding: '10px 22px' }}>
+                      {isAdding ? 'Saving...' : 'Save'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+    </Stagger>
   );
 };
