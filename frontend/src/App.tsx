@@ -359,7 +359,7 @@ export const App: React.FC = () => {
           </header>
 
           <div className="tabs-wrap">
-            <AnimatedTabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
+        <AnimatedTabs tabs={tabs} active={activeTab} onChange={(id) => setActiveTab(id as TabId)} />
           </div>
 
           <main className="page flex-1 w-full">
