@@ -1,9 +1,14 @@
 import type { ApiError } from '../types/health.types';
+import { mockFetch } from './mockServer';
 
 export const API_BASE_URL =
   import.meta.env.VITE_API_URL ??
   import.meta.env.VITE_API_BASE_URL ??
   'http://localhost:3000/api';
+
+// Demo mode is ON by default (no backend needed).
+// To use the real backend, set VITE_DEMO_MODE=false
+export const DEMO_MODE = import.meta.env.VITE_DEMO_MODE !== 'false';
 
 export class ApiClientError extends Error {
   statusCode?: number;
@@ -18,6 +23,14 @@ export class ApiClientError extends Error {
 }
 
 export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  if (DEMO_MODE) {
+    try {
+      return await mockFetch<T>(endpoint, options);
+    } catch (error) {
+      throw new ApiClientError(error instanceof Error ? error.message : 'Demo API error');
+    }
+  }
+
   const url = `${API_BASE_URL.replace(/\/$/, '')}/${endpoint.replace(/^\//, '')}`;
 
   const defaultHeaders: Record<string, string> = {

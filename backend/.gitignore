@@ -29,3 +29,4 @@ coverage/
 !.vscode/settings.json
 !.vscode/extensions.json
 
+.neon
