@@ -11,3 +11,4 @@ services:
         value: https://walleta-finance.vercel.app
       - key: NODE_VERSION
         value: 20
+

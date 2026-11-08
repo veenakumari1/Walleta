@@ -10,7 +10,7 @@ interface SplashProps {
 
 type Phase = 'checking' | 'gate' | 'playing';
 
-const Splash: React.FC<SplashProps> = ({ onDone, duration = 2800 }) => {
+const Splash: React.FC<SplashProps> = ({ onDone, duration = 3000 }) => {
   const uid = useId().replace(/:/g, '');
   const bg = `bg-${uid}`;
   const st = `st-${uid}`;
@@ -108,10 +108,12 @@ const Splash: React.FC<SplashProps> = ({ onDone, duration = 2800 }) => {
           animation:wl-ch .7s forwards}
         @keyframes wl-ch{to{opacity:1;filter:blur(0);transform:none}}
 
-        .wl-line{margin-top:14px;height:3px;width:0;border-radius:3px;
-          background:linear-gradient(90deg,transparent,#FF8A3D,#FF5E1A,transparent);
-          animation:wl-line .9s 2.5s ease-out forwards}
+               .wl-line{margin-top:14px;height:3px;width:0;border-radius:3px;
+          background:linear-gradient(90deg,transparent,#FF8A3D,#FFD2A8,#FF5E1A,transparent);
+          background-size:200% 100%;
+          animation:wl-line .5s 1.3s ease-out forwards, wl-shimmer 1.2s 1.8s linear infinite}
         @keyframes wl-line{to{width:150px}}
+        @keyframes wl-shimmer{from{background-position:200% 0}to{background-position:-200% 0}}
 
         .wl-out{animation:wl-out .5s ${(duration - 500) / 1000}s forwards}
         @keyframes wl-out{to{opacity:0;transform:scale(1.04)}}
